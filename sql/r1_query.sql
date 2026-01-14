@@ -45,24 +45,21 @@ ORDER BY
     p.description;
  ==============================================================*/
 
+
 CREATE OR REPLACE FUNCTION get_monthly_product_sales()
-RETURNS TABLE (
-    month DATE,
-    product_id INT,
-    product_description TEXT,
-    total_quantity BIGINT,
-    total_sale NUMERIC
-)
+RETURNS JSONB
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    RETURN QUERY
+	DROP TABLE IF EXISTS temp01;
+	CREATE TEMP TABLE temp01 AS 
     SELECT 
         DATE_TRUNC('month', td.tran_dt)::DATE AS month,
-        p.product_id,
-        p.description AS product_description,
-        SUM(td.qty) AS total_quantity,
-        SUM(td.amt) AS total_sale
+        p.product_id :: int,
+        p.description::text AS product_description,
+        SUM(td.qty::bigint) AS total_quantity,
+        -- SUM(td.amt::float) AS total_sale
+        ROUND(SUM(td.amt)::NUMERIC, 2) AS total_sale
     FROM product p
     JOIN tran_dtl td
         ON p.product_id = td.product_id
@@ -73,6 +70,9 @@ BEGIN
     ORDER BY 
         month,
         p.product_id;
+
+	RETURN (SELECT JSON_AGG(T) FROM TEMP01 T);
+	
 END;
 $$;
 

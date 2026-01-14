@@ -56,27 +56,18 @@ ORDER BY
     total_sale DESC;
 ==============================================================*/
 
-
+DROP FUNCTION IF EXISTS get_monthly_member_product_sales;
 CREATE OR REPLACE FUNCTION get_monthly_member_product_sales()
-RETURNS TABLE (
-    month DATE,
-    member_id INT,
-    product_id INT,
-    product_description TEXT,
-    total_quantity BIGINT,
-    total_sale NUMERIC
-)
-LANGUAGE plpgsql
+RETURNS SETOF RECORD
+LANGUAGE sql
 AS $$
-BEGIN
-    RETURN QUERY
     SELECT 
         DATE_TRUNC('month', td.tran_dt)::DATE AS month,
         m.member_id,
         p.product_id,
         p.description AS product_description,
-        SUM(td.qty) AS total_quantity,
-        SUM(td.amt) AS total_sale
+        SUM(td.qty)::BIGINT AS total_quantity,
+        ROUND(SUM(td.amt)::NUMERIC, 2) AS total_sale
     FROM tran_dtl td
     JOIN tran_hdr th
         ON td.tran_id = th.tran_id
@@ -93,8 +84,16 @@ BEGIN
         month,
         m.member_id,
         total_sale DESC;
-END;
 $$;
 
 
--- SELECT * FROM get_monthly_member_product_sales();
+SELECT *
+FROM get_monthly_member_product_sales()
+AS t(
+    month DATE,
+    member_id INT,
+    product_id INT,
+    product_description TEXT,
+    total_quantity BIGINT,
+    total_sale NUMERIC
+);
